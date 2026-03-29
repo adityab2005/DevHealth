@@ -3,12 +3,12 @@ const NormalizedEvent = require('../models/NormalizedEvent');
 const AggregatedMetric = require('../models/AggregatedMetric');
 
 // Helper to upsert metrics
-const upsertMetric = async (project_id, metric_name, value, timestamp) => {
-  if (!project_id || project_id === 'unknown') return;
+const upsertMetric = async (team_id, metric_name, value, timestamp) => {
+  if (!team_id || team_id === 'unknown') return;
 
   try {
     await AggregatedMetric.findOneAndUpdate(
-      { project_id, metric_name, timestamp },
+      { team_id, metric_name, timestamp },
       { $set: { value } },
       { upsert: true, returnDocument: 'after' } // Replaced new with returnDocument
     );
@@ -26,7 +26,7 @@ const aggregateCommits = async () => {
     {
       $group: {
         _id: {
-          project: "$project_id",
+          project: "$team_id",
           // Group by Day bucket
           date: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } }
         },
@@ -53,7 +53,7 @@ const aggregateBuilds = async () => {
     {
       $group: {
         _id: {
-          project: "$project_id",
+          project: "$team_id",
           date: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } }
         },
         total_builds: { $sum: 1 },
@@ -92,7 +92,7 @@ const aggregateIssues = async () => {
     {
       $group: {
         _id: {
-          project: "$project_id",
+          project: "$team_id",
           status: "$status",
           date: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } }
         },
@@ -150,4 +150,4 @@ const initMetricAggregator = () => {
   setTimeout(runAggregations, 5000);
 };
 
-module.exports = { initMetricAggregator };
+module.exports = { initMetricAggregator, runAggregations };

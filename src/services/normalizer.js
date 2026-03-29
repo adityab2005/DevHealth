@@ -2,7 +2,7 @@
  * Mappers to convert tool-specific webhooks into a standard NormalizedEvent format.
  */
 
-const { GITHUB_TO_PROJECT, JIRA_TO_PROJECT, JENKINS_TO_PROJECT, DEFAULT_PROJECT } = require('../config/projectMap');
+const { GITHUB_TO_TEAM, JIRA_TO_TEAM, JENKINS_TO_TEAM, DEFAULT_TEAM } = require('../config/projectMap');
 
 const normalizeGithubEvent = (raw) => {
   const { event_type, payload } = raw;
@@ -12,7 +12,7 @@ const normalizeGithubEvent = (raw) => {
   let timestamp = payload.repository?.updated_at || new Date();
   
   const rawRepoName = payload.repository?.name || 'unknown_repo';
-  const project_id = GITHUB_TO_PROJECT[rawRepoName] || rawRepoName || DEFAULT_PROJECT;
+  const team_id = GITHUB_TO_TEAM[rawRepoName] || rawRepoName || DEFAULT_TEAM;
   
   if (event_type === 'push') {
     type = 'commit';
@@ -33,7 +33,7 @@ const normalizeGithubEvent = (raw) => {
 
   return {
     source: 'github',
-    project_id,
+    team_id,
     type,
     status,
     actor,
@@ -60,11 +60,11 @@ const normalizeJiraEvent = (raw) => {
   }
 
   const rawProjectKey = issue?.fields?.project?.key || 'unknown_jira_key';
-  const project_id = JIRA_TO_PROJECT[rawProjectKey] || rawProjectKey || DEFAULT_PROJECT;
+  const team_id = JIRA_TO_TEAM[rawProjectKey] || rawProjectKey || DEFAULT_TEAM;
 
   return {
     source: 'jira',
-    project_id,
+    team_id,
     type,
     status,
     actor,
@@ -95,11 +95,11 @@ const normalizeJenkinsEvent = (raw) => {
   let timestamp = payload.build?.timestamp ? new Date(payload.build.timestamp) : new Date(); // Use provided time or fallback
   
   const rawJobName = payload.name || 'unknown_job';
-  const project_id = JENKINS_TO_PROJECT[rawJobName] || rawJobName || DEFAULT_PROJECT;
+  const team_id = JENKINS_TO_TEAM[rawJobName] || rawJobName || DEFAULT_TEAM;
 
   return {
     source: 'jenkins',
-    project_id,
+    team_id,
     type,
     status,
     actor,

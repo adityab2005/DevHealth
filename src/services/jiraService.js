@@ -1,9 +1,9 @@
 const axios = require('axios');
 const NormalizedEvent = require('../models/NormalizedEvent');
 
-const fetchJiraIssues = async (config, projectId) => {
+const fetchJiraIssues = async (config, teamId) => {
   if (!config || !config.domain || !config.email || !config.token) {
-    console.warn(`[Jira Service] Missing JIRA credentials for project ${projectId}. Skipping fetch.`);
+    console.warn(`[Jira Service] Missing JIRA credentials for project ${teamId}. Skipping fetch.`);
     return;
   }
 
@@ -20,7 +20,7 @@ const fetchJiraIssues = async (config, projectId) => {
 
   try {
     const response = await axios.get(
-      `https://${cleanDomain}/rest/api/3/search`,
+      `https://${cleanDomain}/rest/api/3/search/jql`,
       {
         headers: {
           'Authorization': `Basic ${authHeader}`,
@@ -35,11 +35,11 @@ const fetchJiraIssues = async (config, projectId) => {
     );
 
     const issues = response.data.issues || [];
-    console.log(`[Jira Service] Fetched ${issues.length} recently updated issues for project ${projectId}.`);
+    console.log(`[Jira Service] Fetched ${issues.length} recently updated issues for project ${teamId}.`);
 
     const bulkOps = issues.map(issue => {
       const rawProjectKey = issue.fields?.project?.key || 'unknown_jira_key';
-      const project_id = projectId;
+      const team_id = teamId;
 
       const statusName = issue.fields?.status?.name?.toLowerCase() || 'unknown';
       let mappedStatus = 'opened';
@@ -59,7 +59,7 @@ const fetchJiraIssues = async (config, projectId) => {
           update: {
             $set: {
               source: 'jira',
-              project_id,
+              team_id,
               type: 'issue',
               status: mappedStatus,
               actor: issue.fields?.reporter?.displayName || 'unknown',     
@@ -84,7 +84,7 @@ const fetchJiraIssues = async (config, projectId) => {
     }
 
   } catch (error) {
-    console.error(`[Jira Service] Error fetching issues for project ${projectId}:`, error.message); 
+    console.error(`[Jira Service] Error fetching issues for project ${teamId}:`, error.message); 
   }
 };
 

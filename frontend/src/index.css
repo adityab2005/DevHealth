@@ -1,1 +1,44 @@
-body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; background-color: #f9fafb; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bgDark text-textMain antialiased min-h-screen font-sans;
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+    background-attachment: fixed;
+    margin: 0;
+  }
+}
+
+@layer components {
+  /* Glass card container */
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl rounded-xl;
+  }
+  
+  /* Primary Button */
+  .btn-primary {
+    @apply px-4 py-2 bg-primary hover:bg-indigo-400 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-indigo-500/30;
+  }
+
+  /* Secondary Button */
+  .btn-secondary {
+    @apply px-4 py-2 bg-secondary hover:bg-green-400 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-green-500/30;
+  }
+
+  /* Danger Button */
+  .btn-danger {
+    @apply px-4 py-2 bg-red-500 hover:bg-red-400 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-red-500/30;
+  }
+
+  /* Inputs */
+  .form-input {
+    @apply w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-gray-400;
+  }
+
+  /* Labels */
+  .form-label {
+    @apply block text-sm font-medium text-gray-300 mb-1;
+  }
+}

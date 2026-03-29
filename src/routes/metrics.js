@@ -1,19 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const AggregatedMetric = require('../models/AggregatedMetric');
+const { protect } = require('../middleware/auth');
+
+router.use(protect);
 
 // --- GET /api/v1/metrics ---
-// Fetch aggregated metrics, filtered by project_id and metric_name, formatted for Grafana Infinity/JSON Plugin
 router.get('/', async (req, res) => {
   try {
-    const { project_id, metric_name, from, to } = req.query;
-
-    const query = {};
-
-    if (project_id) {
-      query.project_id = project_id;
-    }
+    const { metric_name, from, to } = req.query;
     
+    // Always enforce the user's team payload
+    const team_id = req.user.team_id;
+
+    if (!team_id) {
+       return res.status(403).json({ error: 'User does not belong to a team. Cannot fetch metrics.' });
+    }
+
+    const query = { team_id };
+
     if (metric_name) {
       if (metric_name.includes(',')) {
         query.metric_name = { $in: metric_name.split(',') };

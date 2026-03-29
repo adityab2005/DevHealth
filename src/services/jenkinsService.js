@@ -1,9 +1,9 @@
 const axios = require('axios');
 const NormalizedEvent = require('../models/NormalizedEvent');
 
-const fetchJenkinsBuilds = async (config, projectId) => {
+const fetchJenkinsBuilds = async (config, teamId) => {
   if (!config || !config.baseUrl || !config.username || !config.token || !config.jobs) {
-    console.warn(`[Jenkins Service] Missing credentials for project ${projectId}. Skipping.`);
+    console.warn(`[Jenkins Service] Missing credentials for project ${teamId}. Skipping.`);
     return;
   }
 
@@ -26,7 +26,7 @@ const fetchJenkinsBuilds = async (config, projectId) => {
       );
 
       const builds = (response.data.builds || []).filter(b => !b.building && b.result);
-      console.log(`[Jenkins Service] Fetched ${builds.length} completed builds for ${jobName} in project ${projectId}`);
+      console.log(`[Jenkins Service] Fetched ${builds.length} completed builds for ${jobName} in project ${teamId}`);
 
       const bulkOps = builds.map(build => {
         const buildStatus = build.result ? build.result.toLowerCase() : 'unknown';
@@ -40,7 +40,7 @@ const fetchJenkinsBuilds = async (config, projectId) => {
             update: {
               $set: {
                 source: 'jenkins',
-                project_id: projectId,
+                team_id: teamId,
                 type: 'build',
                 status: buildStatus,
                 actor: 'jenkins_system',
@@ -62,7 +62,7 @@ const fetchJenkinsBuilds = async (config, projectId) => {
       }
 
     } catch (error) {
-       console.error(`[Jenkins Service] Error fetching builds for job ${jobName} in project ${projectId}:`, error.message);
+       console.error(`[Jenkins Service] Error fetching builds for job ${jobName} in project ${teamId}:`, error.message);
     }
   }
 };

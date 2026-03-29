@@ -24,7 +24,11 @@ app.use(express.json());
 const webhooksRoutes = require('./routes/webhooks');
 const metricsRoutes = require('./routes/metrics');
 const integrationsRoutes = require('./routes/integrations');
+const authRoutes = require('./routes/auth');
+const teamsRoutes = require('./routes/teams');
 
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/teams', teamsRoutes);
 app.use('/api/v1/webhooks', webhooksRoutes);
 app.use('/api/v1/metrics', metricsRoutes);
 app.use('/api/v1/integrations', integrationsRoutes);

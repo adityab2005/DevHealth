@@ -16,39 +16,36 @@ const pollApis = async () => {
   try {
     console.log('[ApiPoller] Starting dynamic API polling cycle...');
 
-    // Fetch all integration configs from MongoDB
     const configs = await IntegrationConfig.find({});
-    
     if (configs.length === 0) {
         console.log('[ApiPoller] No integration configs found. Skipping.');
         return;
     }
 
-    const tasks = [];
-
-    // Loop through each configuration and queue up the service calls
     for (const config of configs) {
-        const projectId = config.project_id;
-        
+        const teamId = config.team_id;
+        const projectTasks = [];
+
         if (config.github && config.github.token) {
-            tasks.push(fetchGithubCommits(config.github, projectId));
+            projectTasks.push(fetchGithubCommits(config.github, teamId));
         }
-        
+
         if (config.jira && config.jira.token) {
-            tasks.push(fetchJiraIssues(config.jira, projectId));
+            projectTasks.push(fetchJiraIssues(config.jira, teamId));
         }
-        
+
         if (config.jenkins && config.jenkins.token) {
-            tasks.push(fetchJenkinsBuilds(config.jenkins, projectId));
+            projectTasks.push(fetchJenkinsBuilds(config.jenkins, teamId));
+        }
+
+        if (projectTasks.length > 0) {
+            await Promise.allSettled(projectTasks);
+            config.last_synced = new Date();
+            await config.save();
         }
     }
 
-    if (tasks.length > 0) {
-        await Promise.allSettled(tasks);
-        console.log(`[ApiPoller] API polling cycle completed for ${configs.length} project(s).`);
-    } else {
-        console.log('[ApiPoller] No active integrations found in the configs.');
-    }
+    console.log(`[ApiPoller] API polling cycle completed for ${configs.length} project(s).`);
 
   } catch (error) {
     console.error('[ApiPoller] API polling failed:', error);
@@ -58,11 +55,8 @@ const pollApis = async () => {
 };
 
 const initApiPoller = () => {
-  // Run API polling every 5 minutes
   cron.schedule('*/5 * * * *', pollApis);
-
-  // Calculate initially on boot after a slight delay
   setTimeout(pollApis, 10000);
 };
 
-module.exports = { initApiPoller };
+module.exports = { initApiPoller, pollApis };

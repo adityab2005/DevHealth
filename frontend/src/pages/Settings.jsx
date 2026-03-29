@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/apiClient';
+import { useAuth } from '../context/AuthContext';
+import RoleGuard from '../components/RoleGuard';
+import { motion } from 'framer-motion';
+import { Save, GitBranch, CheckSquare, Layers } from 'lucide-react';
 
 const Settings = () => {
-  const [selectedProject, setSelectedProject] = useState('');
-  const [availableProjects, setAvailableProjects] = useState([]);
+  const { user } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -15,38 +18,29 @@ const Settings = () => {
     jenkins: { baseUrl: '', username: '', token: '', jobs: '' }
   });
 
-  // Fetch project list
   useEffect(() => {
-    const init = async () => {
-       try {
-           const res = await apiClient.get('/integrations');
-           if (res.data && res.data.length > 0) {
-               setAvailableProjects(res.data);
-               setSelectedProject(res.data[0]);
-           }
-       } catch (err) { }
-    };
-    init();
-  }, []);
-
-  useEffect(() => {
-    if (selectedProject) fetchConfig();
-  }, [selectedProject]);
+    if (user?.team_id) {
+       fetchConfig();
+    }
+  }, [user]);
 
   const fetchConfig = async () => {
     setLoading(true);
     setMessage({ text: '', type: '' });
     try {
-      const response = await apiClient.get(`/integrations/${selectedProject}`);
+      const response = await apiClient.get(`/integrations`);
       if (response.data) {
+        // Since we are getting team configurations
+        const config = response.data;
         setForm({
-          github: response.data.github || { token: '', repositories: '' },
-          jira: response.data.jira || { domain: '', email: '', token: '', projects: '' },
-          jenkins: response.data.jenkins || { baseUrl: '', username: '', token: '', jobs: '' }
+          github: config.github || { token: '', repositories: '' },
+          jira: config.jira || { domain: '', email: '', token: '', projects: '' },
+          jenkins: config.jenkins || { baseUrl: '', username: '', token: '', jobs: '' }
         });
       }
     } catch (error) {
-      // If fetching new generic ID, just clear it
+      console.error('Failed to load settings', error);
+      // If fetching fails, clear it
       setForm({
         github: { token: '', repositories: '' },
         jira: { domain: '', email: '', token: '', projects: '' },
@@ -59,24 +53,12 @@ const Settings = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!selectedProject.trim()) {
-        setMessage({ text: 'Project Name is required!', type: 'error' });
-        return;
-    }
 
     setSaving(true);
     setMessage({ text: '', type: '' });
     try {
-        await apiClient.post('/integrations', {
-            project_id: selectedProject,
-            ...form
-        });
+        await apiClient.post('/integrations', form);
         setMessage({ text: 'Configuration saved successfully!', type: 'success' });
-        
-        // Refresh project list to include any new manually typed ones
-        const res = await apiClient.get('/integrations');
-        setAvailableProjects(res.data);
-
         setTimeout(() => setMessage({ text: '', type: '' }), 3000);
     } catch (error) {
         console.error('Failed to save config', error);
@@ -96,107 +78,147 @@ const Settings = () => {
     }));
   };
 
-  // UI styles
-  const sectionStyle = {
-      background: 'white',
-      padding: '24px',
-      borderRadius: '8px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      marginBottom: '20px'
+  if (!user || user.role === 'developer') {
+      return (
+          <div className="max-w-3xl mx-auto flex flex-col items-center justify-center p-20 glass-panel mt-10">
+              <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
+              <p className="text-gray-400">You do not have permission to view or manage integrations.</p>
+          </div>
+      );
+  }
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
   };
-  
-  const inputStyle = {
-      display: 'block',
-      width: '100%',
-      padding: '8px 12px',
-      marginTop: '5px',
-      marginBottom: '15px',
-      border: '1px solid #ccc',
-      borderRadius: '4px',
-      fontSize: '14px',
-      boxSizing: 'border-box'
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-         <h1 style={{ margin: 0, color: '#111827' }}>Integration Settings</h1>
-         
-         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-             <label style={{ fontSize: '14px', fontWeight: 'bold' }}>Create or Select Project Context:</label>
-             <input 
-                type="text"
-                list="projects-datalist"
-                placeholder="Enter new project name..."
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '200px' }}
-             />
-             <datalist id="projects-datalist">
-                {availableProjects.map(p => <option key={p} value={p} />)}
-             </datalist>
-         </div>
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-8">
+         <h1 className="text-3xl font-bold text-white tracking-tight">Team Integration Settings</h1>
+         <p className="text-gray-400 mt-1">Configure external data sources to aggregate metrics.</p>
       </div>
       
       {message.text && (
-          <div style={{ padding: '12px', borderRadius: '4px', marginBottom: '20px', 
-                        backgroundColor: message.type === 'success' ? '#d1fae5' : '#fee2e2',
-                        color: message.type === 'success' ? '#065f46' : '#991b1b' }}>
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-4 rounded-xl mb-6 backdrop-blur-md border ${
+                message.type === 'success' ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'
+            }`}
+          >
               {message.text}
-          </div>
+          </motion.div>
       )}
 
       {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>Loading settings...</div>
+          <div className="flex items-center justify-center p-20 glass-panel">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          </div>
       ) : (
-          <form onSubmit={handleSave}>
-              <div style={sectionStyle}>
-                  <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>GitHub</h3>
-                  <label>Personal Access Token (PAT)</label>
-                  <input style={inputStyle} type="password" placeholder="ghp_..." value={form.github.token || ''} onChange={e => handleChange('github', 'token', e.target.value)} />
-                  <label>Repositories (comma-separated: owner/repo)</label>
-                  <input style={inputStyle} type="text" placeholder="facebook/react, adobe/react-native" value={form.github.repositories || ''} onChange={e => handleChange('github', 'repositories', e.target.value)} />
-              </div>
+          <motion.form 
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            onSubmit={handleSave}
+            className="space-y-6"
+          >
+              {/* GitHub */}
+              <motion.div variants={itemVariants} className="glass-panel p-6">
+                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <GitBranch className="text-white" size={24} />
+                    <h3 className="text-xl font-semibold text-white m-0">GitHub</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                      <div>
+                          <label className="form-label">Personal Access Token (PAT)</label>
+                          <input className="form-input" type="password" placeholder="ghp_..." value={form.github.token || ''} onChange={e => handleChange('github', 'token', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">Repositories (comma-separated: owner/repo)</label>
+                          <input className="form-input" type="text" placeholder="facebook/react, adobe/react-native" value={form.github.repositories || ''} onChange={e => handleChange('github', 'repositories', e.target.value)} />
+                      </div>
+                  </div>
+              </motion.div>
 
-              <div style={sectionStyle}>
-                  <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Jira</h3>
-                  <label>Domain</label>
-                  <input style={inputStyle} type="text" placeholder="yourcompany.atlassian.net" value={form.jira.domain || ''} onChange={e => handleChange('jira', 'domain', e.target.value)} />
-                  <label>Email Address</label>
-                  <input style={inputStyle} type="email" placeholder="user@company.com" value={form.jira.email || ''} onChange={e => handleChange('jira', 'email', e.target.value)} />
-                  <label>API Token</label>
-                  <input style={inputStyle} type="password" placeholder="Jira API Token" value={form.jira.token || ''} onChange={e => handleChange('jira', 'token', e.target.value)} />
-                  <label>Projects (comma-separated keys)</label>
-                  <input style={inputStyle} type="text" placeholder="PROJ, ENG" value={form.jira.projects || ''} onChange={e => handleChange('jira', 'projects', e.target.value)} />
-              </div>
+              {/* Jira */}
+              <motion.div variants={itemVariants} className="glass-panel p-6">
+                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <CheckSquare className="text-secondary" size={24} />
+                    <h3 className="text-xl font-semibold text-white m-0">Jira</h3>
+                  </div>
 
-              <div style={sectionStyle}>
-                  <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Jenkins</h3>
-                  <label>Base URL</label>
-                  <input style={inputStyle} type="text" placeholder="https://jenkins.company.com" value={form.jenkins.baseUrl || ''} onChange={e => handleChange('jenkins', 'baseUrl', e.target.value)} />
-                  <label>Username</label>
-                  <input style={inputStyle} type="text" placeholder="admin" value={form.jenkins.username || ''} onChange={e => handleChange('jenkins', 'username', e.target.value)} />
-                  <label>API Token / Password</label>
-                  <input style={inputStyle} type="password" placeholder="Jenkins Token" value={form.jenkins.token || ''} onChange={e => handleChange('jenkins', 'token', e.target.value)} />
-                  <label>Jobs (comma-separated)</label>
-                  <input style={inputStyle} type="text" placeholder="Backend-Deploy, Frontend-Build" value={form.jenkins.jobs || ''} onChange={e => handleChange('jenkins', 'jobs', e.target.value)} />
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                          <label className="form-label">Domain</label>
+                          <input className="form-input" type="text" placeholder="yourcompany.atlassian.net" value={form.jira.domain || ''} onChange={e => handleChange('jira', 'domain', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">Email Address</label>
+                          <input className="form-input" type="email" placeholder="user@company.com" value={form.jira.email || ''} onChange={e => handleChange('jira', 'email', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                          <label className="form-label">API Token</label>
+                          <input className="form-input" type="password" placeholder="Jira API Token" value={form.jira.token || ''} onChange={e => handleChange('jira', 'token', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                          <label className="form-label">Projects (comma-separated keys)</label>
+                          <input className="form-input" type="text" placeholder="PROJ, ENG" value={form.jira.projects || ''} onChange={e => handleChange('jira', 'projects', e.target.value)} />
+                      </div>
+                  </div>
+              </motion.div>
 
-              <div style={{ textAlign: 'right', marginBottom: '40px' }}>
-                  <button type="submit" disabled={saving} style={{ 
-                      padding: '10px 24px', 
-                      background: saving ? '#9ca3af' : '#2563eb', 
-                      color: 'white', 
-                      border: 'none', 
-                      borderRadius: '4px', 
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      fontWeight: 'bold',
-                      fontSize: '16px'
-                  }}>
-                      {saving ? 'Saving...' : 'Save Configuration'}
-                  </button>
-              </div>
-          </form>
+              {/* Jenkins */}
+              <motion.div variants={itemVariants} className="glass-panel p-6">
+                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <Layers className="text-accent" size={24} />
+                    <h3 className="text-xl font-semibold text-white m-0">Jenkins</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                          <label className="form-label">Base URL</label>
+                          <input className="form-input" type="text" placeholder="https://jenkins.company.com" value={form.jenkins.baseUrl || ''} onChange={e => handleChange('jenkins', 'baseUrl', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">Username</label>
+                          <input className="form-input" type="text" placeholder="admin" value={form.jenkins.username || ''} onChange={e => handleChange('jenkins', 'username', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">API Token / Password</label>
+                          <input className="form-input" type="password" placeholder="Jenkins Token" value={form.jenkins.token || ''} onChange={e => handleChange('jenkins', 'token', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                          <label className="form-label">Jobs (comma-separated)</label>
+                          <input className="form-input" type="text" placeholder="Backend-Deploy, Frontend-Build" value={form.jenkins.jobs || ''} onChange={e => handleChange('jenkins', 'jobs', e.target.value)} />
+                      </div>
+                  </div>
+              </motion.div>
+
+              <RoleGuard allowedRoles={['admin']}>
+                  <motion.div variants={itemVariants} className="flex justify-end pt-4 pb-12">
+                      <button 
+                        type="submit" 
+                        disabled={saving} 
+                        className="btn-primary flex items-center gap-2 px-6 py-3"
+                      >
+                          <Save size={18} />
+                          {saving ? 'Saving...' : 'Save Configuration'}
+                      </button>
+                  </motion.div>
+              </RoleGuard>
+          </motion.form>
       )}
     </div>
   );

@@ -1,105 +1,153 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/apiClient';
 import { fetchMetrics } from '../api/metrics';
-import ProjectSelector from '../components/ProjectSelector';
 import CommitFrequencyChart from '../components/charts/CommitFrequencyChart';
 import BuildSuccessRateChart from '../components/charts/BuildSuccessRateChart';
 import IssuesChart from '../components/charts/IssuesChart';
 import RoleGuard from '../components/RoleGuard';
 import { useAuth } from '../context/AuthContext';
+import { RefreshCw, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  
-  const [availableProjects, setAvailableProjects] = useState(['DEFAULT_PROJECT']);
-  const [selectedProject, setSelectedProject] = useState('DEFAULT_PROJECT');
 
   const [commitsData, setCommitsData] = useState([]);
   const [buildsData, setBuildsData] = useState([]);
   const [issuesData, setIssuesData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState(null);
 
-  // Fetch dynamically saved projects from DB
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await apiClient.get('/integrations');
-        const projects = response.data;
-        if (projects && projects.length > 0) {
-          setAvailableProjects(projects);
-          setSelectedProject(projects[0]);
-        }
-      } catch (err) {
-        console.error('Failed to load projects list', err);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [commits, builds, issues, configRes] = await Promise.all([
+        fetchMetrics('commit_frequency'),
+        fetchMetrics('build_success_rate'),
+        fetchMetrics(['issues_opened', 'issues_closed']),
+        apiClient.get('/integrations').catch(() => null)
+      ]);
+
+      setCommitsData(commits);
+      setBuildsData(builds);
+      setIssuesData(issues);
+
+      if (configRes && configRes.data) {
+        setLastSynced(configRes.data.last_synced || null);
+      } else {
+        setLastSynced(null);
       }
-    };
-    fetchProjects();
-  }, []);
+    } catch (error) {
+      console.error("Failed to load dashboard data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const [commits, builds, issues] = await Promise.all([
-          fetchMetrics(selectedProject, 'commit_frequency'),
-          fetchMetrics(selectedProject, 'build_success_rate'),
-          fetchMetrics(selectedProject, ['issues_opened', 'issues_closed'])
-        ]);
+    if (user?.team_id) {
+       loadData();
+    }
+  }, [user]);
 
-        setCommitsData(commits);
-        setBuildsData(builds);
-        setIssuesData(issues);
-      } catch (error) {
-        console.error("Failed to load dashboard data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (selectedProject) loadData();
-    // In a real app, you might want to set up an interval for live polling here
-  }, [selectedProject]);
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await apiClient.post('/integrations/sync');
+      await loadData();
+    } catch (error) {
+      console.error('Failed to sync', error);
+      alert('Failed to complete sync.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+    <div className="max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 style={{ margin: 0, color: '#111827' }}>DevHealth Dashboard</h1>
-          <p style={{ margin: '5px 0 0 0', color: '#6b7280' }}>Welcome back, {user?.name} ({user?.role})</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard Overview</h1>
+          <p className="text-gray-400 mt-1">Here's what's happening in your team's repositories.</p>
         </div>
-        <ProjectSelector
-          projects={availableProjects}
-          onSelectProject={setSelectedProject}
-        />
+
+        <div className="glass-panel px-4 py-2 flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <Clock size={16} className="text-primary" />
+            {lastSynced ? `Synced: ${new Date(lastSynced).toLocaleTimeString()}` : 'Never synced'}
+          </div>
+          <div className="w-px h-6 bg-white/10" />
+          <button 
+            type="button" 
+            onClick={handleSync} 
+            disabled={syncing} 
+            className="flex items-center gap-2 px-3 py-1.5 bg-primary/20 hover:bg-primary/40 text-primary-light border border-primary/30 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm text-white"
+          >
+            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync Now'}
+          </button>
+        </div>
       </div>
 
       {loading ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Loading metrics...</div>
+        <div className="flex items-center justify-center p-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-          
-          {/* Top Row: Commits and Builds */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '20px' }}>
-            
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <RoleGuard allowedRoles={['admin', 'manager', 'developer']}>
-              <CommitFrequencyChart data={commitsData} />
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="lg:col-span-2 glass-panel p-6"
+              >
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary"></span>
+                    Commit Frequency
+                </h3>
+                <div className="h-[300px] w-full">
+                  <CommitFrequencyChart data={commitsData} />
+                </div>
+              </motion.div>
             </RoleGuard>
 
-            {/* Let's pretend only admins and managers care about build health */}
             <RoleGuard allowedRoles={['admin', 'manager']}>
-                <BuildSuccessRateChart data={buildsData} />
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                className="glass-panel p-6"
+              >
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-secondary"></span>
+                    Build Success
+                </h3>
+                <div className="h-[300px] w-full">
+                    <BuildSuccessRateChart data={buildsData} />
+                </div>
+              </motion.div>
             </RoleGuard>
-
           </div>
 
-          {/* Bottom Row: Issues */}
-          <div style={{ paddingBottom: '40px' }}>
-             {/* Read-access to product managers, admins, developers */}
-            <RoleGuard allowedRoles={['admin', 'manager', 'developer']}>
-              <IssuesChart data={issuesData} />
-            </RoleGuard>
-          </div>
-
+          <RoleGuard allowedRoles={['admin', 'manager', 'developer']}>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="glass-panel p-6"
+            >
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent"></span>
+                  Issue Resolution
+              </h3>
+              <div className="h-[350px] w-full">
+                <IssuesChart data={issuesData} />
+              </div>
+            </motion.div>
+          </RoleGuard>
         </div>
       )}
     </div>

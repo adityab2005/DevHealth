@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const integrationConfigSchema = new mongoose.Schema({
-  project_id: { 
+  team_id: { 
     type: String, 
     required: true, 
     unique: true 
@@ -21,7 +21,8 @@ const integrationConfigSchema = new mongoose.Schema({
     username: { type: String, default: '' },
     token: { type: String, default: '' },
     jobs: { type: String, default: '' } // comma-separated
-  }
+  },
+  last_synced: { type: Date, default: null }
 }, { timestamps: true });
 
 const IntegrationConfig = mongoose.model('IntegrationConfig', integrationConfigSchema);

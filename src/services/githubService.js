@@ -2,7 +2,7 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 const NormalizedEvent = require('../models/NormalizedEvent');
 
-const fetchGithubCommits = async (config, projectId) => {
+const fetchGithubCommits = async (config, teamId) => {
   if (!config || !config.token || !config.repositories) {
     return;
   }
@@ -11,7 +11,10 @@ const fetchGithubCommits = async (config, projectId) => {
   const reposPaths = config.repositories.split(',').map(r => r.trim()).filter(Boolean);
 
   for (const repoPath of reposPaths) {
-    if (!repoPath.includes('/')) continue;
+    if (!repoPath.includes('/')) {
+      console.warn(`[GitHub Service] Invalid repository format skipped: "${repoPath}". Expected format is "owner/repo".`);
+      continue;
+    }
     const [owner, repo] = repoPath.split('/');
 
     try {
@@ -29,7 +32,7 @@ const fetchGithubCommits = async (config, projectId) => {
       );
 
       const commits = response.data;
-      console.log(`[GitHub Service] Fetched ${commits.length} commits for ${owner}/${repo} in project ${projectId}`);  
+      console.log(`[GitHub Service] Fetched ${commits.length} commits for ${owner}/${repo} in project ${teamId}`);  
 
       const bulkOps = commits.map(commitData => ({
          updateOne: {
@@ -40,7 +43,7 @@ const fetchGithubCommits = async (config, projectId) => {
            update: {
              $set: {
                source: 'github',
-               project_id: projectId,
+               team_id: teamId,
                type: 'commit',
                status: 'success',
                actor: commitData.author?.login || commitData.commit?.author?.name || 'unknown',

@@ -1,27 +1,35 @@
 const express = require('express');
 const router = express.Router();
 const IntegrationConfig = require('../models/IntegrationConfig');
+const { pollApis } = require('../jobs/apiPoller');
+const { runAggregations } = require('../jobs/metricAggregator');
+const { protect, authorize } = require('../middleware/auth');
 
-// GET all configured projects
-router.get('/', async (req, res) => {
+router.use(protect);
+
+router.post('/sync', async (req, res) => {
   try {
-    const configs = await IntegrationConfig.find({}, 'project_id');
-    const projects = configs.map(c => c.project_id);
-    res.json(projects);
+    await pollApis();
+    await runAggregations();
+    res.json({ message: 'Sync and aggregation completed successfully' });
   } catch (error) {
-    console.error('Error fetching integration projects:', error);
-    res.status(500).json({ error: 'Failed to fetch projects' });
+    console.error('Error during manual sync:', error);
+    res.status(500).json({ error: 'Manual sync failed' });
   }
 });
 
-// GET settings for a specific project
-router.get('/:project_id', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const config = await IntegrationConfig.findOne({ project_id: req.params.project_id });
+    const team_id = req.user.team_id;
+    if (!team_id) {
+       return res.status(400).json({ error: 'User does not belong to a team' });
+    }
+
+    const config = await IntegrationConfig.findOne({ team_id });
     if (config) {
       res.json(config);
     } else {
-      res.json({ project_id: req.params.project_id, github: {}, jira: {}, jenkins: {} });
+      res.json({ team_id, github: {}, jira: {}, jenkins: {} });
     }
   } catch (error) {
     console.error('Error fetching integration config:', error);
@@ -29,17 +37,16 @@ router.get('/:project_id', async (req, res) => {
   }
 });
 
-// POST to upsert settings for a project
-router.post('/', async (req, res) => {
+router.post('/', authorize('admin', 'manager'), async (req, res) => {
   try {
-    const { project_id, github, jira, jenkins } = req.body;
-    
-    if (!project_id) {
-      return res.status(400).json({ error: 'project_id is required' });
+    const team_id = req.user.team_id;
+    if (!team_id) {
+       return res.status(400).json({ error: 'User does not belong to a team. Create one first via Admin.' });
     }
+    const { github, jira, jenkins } = req.body;
 
     const config = await IntegrationConfig.findOneAndUpdate(
-      { project_id },
+      { team_id },
       { $set: { github, jira, jenkins } },
       { new: true, upsert: true }
     );
