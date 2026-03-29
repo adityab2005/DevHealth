@@ -1,111 +1,91 @@
-import MetricCard from "../components/MetricCard";
-import ChartCard from "../components/ChartCard";
-import AlertsPanel from "../components/AlertsPanel";
-import { CheckCircle2, ShieldAlert, BugPlay, Activity, TrendingUp, TrendingDown } from "lucide-react";
-import { mockMetrics, buildTrendData, coverageTrendData, issueDistributionData } from "../data/mockMetrics";
-import { LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import React, { useState, useEffect } from 'react';
+import { fetchMetrics } from '../api/metrics';
+import ProjectSelector from '../components/ProjectSelector';
+import CommitFrequencyChart from '../components/charts/CommitFrequencyChart';
+import BuildSuccessRateChart from '../components/charts/BuildSuccessRateChart';
+import IssuesChart from '../components/charts/IssuesChart';
+import RoleGuard from '../components/RoleGuard';
+import { useAuth } from '../context/AuthContext';
+
+// Hardcoded for demo - could also be fetched from another API
+const AVAILABLE_PROJECTS = ['devhealth_core', 'Deploy_DevHealth_Backend', 'DEFAULT_PROJECT'];
 
 const Dashboard = () => {
-  const COLORS = ['#ef4444', '#3b82f6', '#10b981'];
+  const { user } = useAuth();
+  const [selectedProject, setSelectedProject] = useState(AVAILABLE_PROJECTS[0]);
+  
+  const [commitsData, setCommitsData] = useState([]);
+  const [buildsData, setBuildsData] = useState([]);
+  const [issuesData, setIssuesData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [commits, builds, issues] = await Promise.all([
+          fetchMetrics(selectedProject, 'commit_frequency'),
+          fetchMetrics(selectedProject, 'build_success_rate'),
+          fetchMetrics(selectedProject, ['issues_opened', 'issues_closed'])
+        ]);
+        
+        setCommitsData(commits);
+        setBuildsData(builds);
+        setIssuesData(issues);
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+    // In a real app, you might want to set up an interval for live polling here
+  }, [selectedProject]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10 fade-in">
-      <div className="flex justify-between items-center mb-8">
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <div>
-          <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white to-purple-300 tracking-tight drop-shadow-sm">Dashboard Overview</h1>
-          <p className="text-slate-400 mt-2 font-medium tracking-wide">Real-time health metrics for your software stack.</p>
+          <h1 style={{ margin: 0, color: '#111827' }}>DevHealth Dashboard</h1>
+          <p style={{ margin: '5px 0 0 0', color: '#6b7280' }}>Welcome back, {user?.name} ({user?.role})</p>
         </div>
-        <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/20 shadow-lg backdrop-blur-md hidden sm:flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]"></div>
-          <span className="text-sm font-bold text-green-300 tracking-wider">LIVE</span>
-        </div>
+        <ProjectSelector 
+          projects={AVAILABLE_PROJECTS} 
+          selectedProject={selectedProject}
+          onSelectProject={setSelectedProject}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard title="Build Success" value={`${mockMetrics.buildSuccessRate}%`} icon={CheckCircle2} trend="up" trendValue="2.4%" colorClass="bg-green-500" />
-        <MetricCard title="Test Coverage" value={`${mockMetrics.coverage}%`} icon={ShieldAlert} trend="down" trendValue="0.8%" colorClass="bg-indigo-500" />
-        <MetricCard title="Open Issues" value={mockMetrics.openIssues} icon={BugPlay} trend="down" trendValue="12" colorClass="bg-amber-500" />
-        <MetricCard title="Failed Builds" value={mockMetrics.failedBuilds} icon={Activity} trend="up" trendValue="3" colorClass="bg-red-500" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <ChartCard title="Build Trend" className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={buildTrendData}>
-                <defs>
-                  <linearGradient id="colorSuccess" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorFailure" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                <XAxis dataKey="name" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '1rem', backdropFilter: 'blur(10px)', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)' }}
-                  itemStyle={{ fontWeight: 600 }}
-                />
-                <Area type="monotone" dataKey="success" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorSuccess)" name="Successful Builds" />
-                <Area type="monotone" dataKey="failures" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorFailure)" name="Failed Builds" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
+      {loading ? (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Loading metrics...</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ChartCard title="Coverage Trend">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={coverageTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                  <XAxis dataKey="name" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={['auto', 'auto']} stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '1rem', backdropFilter: 'blur(10px)' }} />
-                  <Line type="monotone" dataKey="coverage" stroke="#6366f1" strokeWidth={4} dot={{ r: 6, fill: '#6366f1', strokeWidth: 2, stroke: '#1e1b4b' }} activeDot={{ r: 8, strokeWidth: 0, fill: '#818cf8', shadow: '0 0 10px #818cf8' }} name="Coverage %" />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
+          {/* Top Row: Commits and Builds */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '20px' }}>
+            
+            <RoleGuard allowedRoles={['admin', 'manager', 'developer']}>
+              <CommitFrequencyChart data={commitsData} />
+            </RoleGuard>
 
-            <ChartCard title="Issue Distribution">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={issueDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={8}
-                    dataKey="value"
-                    stroke="rgba(255,255,255,0.05)"
-                    strokeWidth={2}
-                  >
-                    {issueDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '1rem', backdropFilter: 'blur(10px)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex justify-center gap-4 mt-6">
-                 {issueDistributionData.map((entry, index) => (
-                    <div key={entry.name} className="flex items-center gap-2">
-                       <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                       <span className="text-xs font-semibold text-slate-300">{entry.name}</span>
-                    </div>
-                 ))}
-              </div>
-            </ChartCard>
+            {/* Let's pretend only admins and managers care about build health */}
+            <RoleGuard allowedRoles={['admin', 'manager']}>
+                <BuildSuccessRateChart data={buildsData} />
+            </RoleGuard>
+
           </div>
-        </div>
 
-        <div className="lg:col-span-1">
-          <AlertsPanel />
+          {/* Bottom Row: Issues */}
+          <div style={{ paddingBottom: '40px' }}>
+             {/* Read-access to product managers, admins, developers */}
+            <RoleGuard allowedRoles={['admin', 'manager', 'developer']}>
+              <IssuesChart data={issuesData} />
+            </RoleGuard>
+          </div>
+
         </div>
-      </div>
+      )}
     </div>
   );
 };
