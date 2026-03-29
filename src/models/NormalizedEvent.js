@@ -33,8 +33,9 @@ const normalizedEventSchema = new mongoose.Schema({
   raw_event_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'RawEvent',
-    required: true,
-    unique: true
+    // Optional now because direct API fetches may not have a raw event.
+    unique: true,
+    sparse: true
   },
   metadata: {
     type: mongoose.Schema.Types.Mixed,

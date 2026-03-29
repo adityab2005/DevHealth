@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import apiClient from '../api/apiClient';
 import { fetchMetrics } from '../api/metrics';
 import ProjectSelector from '../components/ProjectSelector';
 import CommitFrequencyChart from '../components/charts/CommitFrequencyChart';
@@ -7,17 +8,33 @@ import IssuesChart from '../components/charts/IssuesChart';
 import RoleGuard from '../components/RoleGuard';
 import { useAuth } from '../context/AuthContext';
 
-// Hardcoded for demo - could also be fetched from another API
-const AVAILABLE_PROJECTS = ['devhealth_core', 'Deploy_DevHealth_Backend', 'DEFAULT_PROJECT'];
-
 const Dashboard = () => {
   const { user } = useAuth();
-  const [selectedProject, setSelectedProject] = useState(AVAILABLE_PROJECTS[0]);
   
+  const [availableProjects, setAvailableProjects] = useState(['DEFAULT_PROJECT']);
+  const [selectedProject, setSelectedProject] = useState('DEFAULT_PROJECT');
+
   const [commitsData, setCommitsData] = useState([]);
   const [buildsData, setBuildsData] = useState([]);
   const [issuesData, setIssuesData] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Fetch dynamically saved projects from DB
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await apiClient.get('/integrations');
+        const projects = response.data;
+        if (projects && projects.length > 0) {
+          setAvailableProjects(projects);
+          setSelectedProject(projects[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load projects list', err);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -28,7 +45,7 @@ const Dashboard = () => {
           fetchMetrics(selectedProject, 'build_success_rate'),
           fetchMetrics(selectedProject, ['issues_opened', 'issues_closed'])
         ]);
-        
+
         setCommitsData(commits);
         setBuildsData(builds);
         setIssuesData(issues);
@@ -38,8 +55,8 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-    
-    loadData();
+
+    if (selectedProject) loadData();
     // In a real app, you might want to set up an interval for live polling here
   }, [selectedProject]);
 
@@ -50,9 +67,8 @@ const Dashboard = () => {
           <h1 style={{ margin: 0, color: '#111827' }}>DevHealth Dashboard</h1>
           <p style={{ margin: '5px 0 0 0', color: '#6b7280' }}>Welcome back, {user?.name} ({user?.role})</p>
         </div>
-        <ProjectSelector 
-          projects={AVAILABLE_PROJECTS} 
-          selectedProject={selectedProject}
+        <ProjectSelector
+          projects={availableProjects}
           onSelectProject={setSelectedProject}
         />
       </div>

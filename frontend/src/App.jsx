@@ -1,10 +1,29 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
 import './index.css';
 
+const Header = () => {
+  const { logout } = useAuth();
+  const location = useLocation();
+  return (
+      <header style={{ background: 'white', borderBottom: '1px solid #e5e7eb', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#111827' }}>DevHealth</div>
+            <nav style={{ display: 'flex', gap: '15px' }}>
+                <Link to='/' style={{ textDecoration: 'none', color: location.pathname === '/' ? '#2563eb' : '#4b5563', fontWeight: location.pathname === '/' ? 'bold' : 'normal' }}>Dashboard</Link>
+                <Link to='/settings' style={{ textDecoration: 'none', color: location.pathname === '/settings' ? '#2563eb' : '#4b5563', fontWeight: location.pathname === '/settings' ? 'bold' : 'normal' }}>Settings</Link>
+            </nav>
+        </div>
+        <button onClick={logout} style={{ ...btnStyle, background: '#ef4444' }}>Log Out</button>
+      </header>
+  );
+};
+
 const AppContent = () => {
-  const { user, login, logout } = useAuth();
+  const { user, login } = useAuth();
 
   if (!user) {
     return (
@@ -23,15 +42,17 @@ const AppContent = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui, sans-serif' }}>
-      <header style={{ background: 'white', borderBottom: '1px solid #e5e7eb', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#111827' }}>DevHealth</div>
-        <button onClick={logout} style={{ ...btnStyle, background: '#ef4444' }}>Log Out</button>
-      </header>
-      <main>
-        <Dashboard />
-      </main>
-    </div>
+    <Router>
+      <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui, sans-serif' }}>
+        <Header />
+        <main>
+          <Routes>
+            <Route path='/' element={<Dashboard />} />
+            <Route path='/settings' element={<Settings />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 };
 
