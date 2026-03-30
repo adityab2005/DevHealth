@@ -4,7 +4,7 @@ const normalizedEventSchema = new mongoose.Schema({
   source: {
     type: String,
     required: true,
-    enum: ['github', 'jira', 'jenkins'],
+    enum: ['github', 'jira', 'jenkins', 'sonarcloud'],
     index: true
   },
   team_id: {

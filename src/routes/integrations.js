@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
     if (config) {
       res.json(config);
     } else {
-      res.json({ team_id, github: {}, jira: {}, jenkins: {} });
+      res.json({ team_id, github: {}, jira: {}, jenkins: {}, sonarcloud: {} });
     }
   } catch (error) {
     console.error('Error fetching integration config:', error);
@@ -43,9 +43,9 @@ router.post('/', authorize('admin', 'manager'), async (req, res) => {
     if (!team_id) {
        return res.status(400).json({ error: 'User does not belong to a team. Create one first via Admin.' });
     }
-    const { github, jira, jenkins, permissions } = req.body;
+    const { github, jira, jenkins, sonarcloud, permissions } = req.body;
 
-    const updateData = { github, jira, jenkins };
+    const updateData = { github, jira, jenkins, sonarcloud };
     if (permissions) updateData.permissions = permissions;
 
     const config = await IntegrationConfig.findOneAndUpdate(

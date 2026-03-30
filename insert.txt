@@ -1,0 +1,51 @@
+              {/* Jenkins */}
+              <motion.div variants={itemVariants} className="glass-panel p-6">
+                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <Layers className="text-accent" size={24} />
+                    <h3 className="text-xl font-semibold text-white m-0">Jenkins</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                          <label className="form-label">Base URL</label>
+                          <input className="form-input" type="text" placeholder="https://jenkins.company.com" value={form.jenkins.baseUrl || ''} onChange={e => handleChange('jenkins', 'baseUrl', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">Username</label>
+                          <input className="form-input" type="text" placeholder="admin" value={form.jenkins.username || ''} onChange={e => handleChange('jenkins', 'username', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">API Token / Password</label>
+                          <input className="form-input" type="password" placeholder="Jenkins Token" value={form.jenkins.token || ''} onChange={e => handleChange('jenkins', 'token', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                          <label className="form-label">Jobs (comma-separated)</label>
+                          <input className="form-input" type="text" placeholder="Backend-Deploy, Frontend-Build" value={form.jenkins.jobs || ''} onChange={e => handleChange('jenkins', 'jobs', e.target.value)} />
+                      </div>
+                  </div>
+              </motion.div>
+
+              {/* SonarCloud */}
+              <motion.div variants={itemVariants} className="glass-panel p-6">
+                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <Cloud className="text-orange-400" size={24} />
+                    <h3 className="text-xl font-semibold text-white m-0">SonarQube Cloud</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                          <label className="form-label">API Token</label>
+                          <input className="form-input" type="password" placeholder="SonarCloud Token" value={form.sonarcloud?.token || ''} onChange={e => handleChange('sonarcloud', 'token', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">Organization</label>
+                          <input className="form-input" type="text" placeholder="Organization Key" value={form.sonarcloud?.organization || ''} onChange={e => handleChange('sonarcloud', 'organization', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                          <label className="form-label">Project Keys (comma-separated)</label>
+                          <input className="form-input" type="text" placeholder="my-org_my-project" value={form.sonarcloud?.projectKeys || ''} onChange={e => handleChange('sonarcloud', 'projectKeys', e.target.value)} />
+                      </div>
+                  </div>
+              </motion.div>
+
+              {/* View Permissions */}

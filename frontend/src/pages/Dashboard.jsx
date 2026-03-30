@@ -4,6 +4,7 @@ import { fetchMetrics } from '../api/metrics';
 import CommitFrequencyChart from '../components/charts/CommitFrequencyChart';
 import BuildSuccessRateChart from '../components/charts/BuildSuccessRateChart';
 import IssuesChart from '../components/charts/IssuesChart';
+import CodeQualityChart from '../components/charts/CodeQualityChart';
 import RoleGuard from '../components/RoleGuard';
 import { useAuth } from '../context/AuthContext';
 import { RefreshCw, Clock } from 'lucide-react';
@@ -15,6 +16,7 @@ const Dashboard = () => {
   const [commitsData, setCommitsData] = useState([]);
   const [buildsData, setBuildsData] = useState([]);
   const [issuesData, setIssuesData] = useState([]);
+  const [codeQualityData, setCodeQualityData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
@@ -23,16 +25,18 @@ const Dashboard = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [commits, builds, issues, configRes] = await Promise.all([
+      const [commits, builds, issues, codeQuality, configRes] = await Promise.all([
         fetchMetrics('commit_frequency'),
         fetchMetrics('build_success_rate'),
         fetchMetrics(['issues_opened', 'issues_closed']),
+        fetchMetrics(['sonar_bugs', 'sonar_vulnerabilities', 'sonar_code_smells', 'sonar_coverage']),
         apiClient.get('/integrations').catch(() => null)
       ]);
 
       setCommitsData(commits);
       setBuildsData(builds);
       setIssuesData(issues);
+      setCodeQualityData(codeQuality);
 
       if (configRes && configRes.data) {
         setLastSynced(configRes.data.last_synced || null);
@@ -161,6 +165,23 @@ const Dashboard = () => {
               </h3>
               <div className="h-[350px] w-full">
                 <IssuesChart data={issuesData} />
+              </div>
+            </motion.div>
+          )}
+
+          {hasPermission('code_quality') && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+              className="glass-panel p-6"
+            >
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  Code Quality (SonarQube)
+              </h3>
+              <div className="h-[350px] w-full">
+                <CodeQualityChart data={codeQualityData} />
               </div>
             </motion.div>
           )}

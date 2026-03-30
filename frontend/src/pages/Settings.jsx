@@ -3,7 +3,7 @@ import apiClient from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import RoleGuard from '../components/RoleGuard';
 import { motion } from 'framer-motion';
-import { Save, GitBranch, CheckSquare, Layers, Shield } from 'lucide-react';
+import { Save, GitBranch, CheckSquare, Layers, Shield, Cloud } from 'lucide-react';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -16,9 +16,10 @@ const Settings = () => {
     github: { token: '', repositories: '' },
     jira: { domain: '', email: '', token: '', projects: '' },
     jenkins: { baseUrl: '', username: '', token: '', jobs: '' },
+    sonarcloud: { token: '', organization: '', projectKeys: '' },
     permissions: {
-      manager: ['commit_frequency', 'build_success', 'issue_resolution'],
-      developer: ['commit_frequency', 'issue_resolution']
+      manager: ['commit_frequency', 'build_success', 'issue_resolution', 'code_quality'],
+      developer: ['commit_frequency', 'issue_resolution', 'code_quality']
     }
   });
 
@@ -40,9 +41,10 @@ const Settings = () => {
           github: config.github || { token: '', repositories: '' },
           jira: config.jira || { domain: '', email: '', token: '', projects: '' },
           jenkins: config.jenkins || { baseUrl: '', username: '', token: '', jobs: '' },
+          sonarcloud: config.sonarcloud || { token: '', organization: '', projectKeys: '' },
           permissions: config.permissions || {
-            manager: ['commit_frequency', 'build_success', 'issue_resolution'],
-            developer: ['commit_frequency', 'issue_resolution']
+            manager: ['commit_frequency', 'build_success', 'issue_resolution', 'code_quality'],
+            developer: ['commit_frequency', 'issue_resolution', 'code_quality']
           }
         });
       }
@@ -53,9 +55,10 @@ const Settings = () => {
         github: { token: '', repositories: '' },
         jira: { domain: '', email: '', token: '', projects: '' },
         jenkins: { baseUrl: '', username: '', token: '', jobs: '' },
+        sonarcloud: { token: '', organization: '', projectKeys: '' },
         permissions: {
-          manager: ['commit_frequency', 'build_success', 'issue_resolution'],
-          developer: ['commit_frequency', 'issue_resolution']
+          manager: ['commit_frequency', 'build_success', 'issue_resolution', 'code_quality'],
+          developer: ['commit_frequency', 'issue_resolution', 'code_quality']
         }
       });
     } finally {
@@ -208,7 +211,7 @@ const Settings = () => {
                   </div>
               </motion.div>
 
-              {/* Jenkins */}
+                            {/* Jenkins */}
               <motion.div variants={itemVariants} className="glass-panel p-6">
                   <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
                     <Layers className="text-accent" size={24} />
@@ -235,6 +238,29 @@ const Settings = () => {
                   </div>
               </motion.div>
 
+              {/* SonarCloud */}
+              <motion.div variants={itemVariants} className="glass-panel p-6">
+                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <Cloud className="text-orange-400" size={24} />
+                    <h3 className="text-xl font-semibold text-white m-0">SonarQube Cloud</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                          <label className="form-label">API Token</label>
+                          <input className="form-input" type="password" placeholder="SonarCloud Token" value={form.sonarcloud?.token || ''} onChange={e => handleChange('sonarcloud', 'token', e.target.value)} />
+                      </div>
+                      <div>
+                          <label className="form-label">Organization</label>
+                          <input className="form-input" type="text" placeholder="Organization Key" value={form.sonarcloud?.organization || ''} onChange={e => handleChange('sonarcloud', 'organization', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                          <label className="form-label">Project Keys (comma-separated)</label>
+                          <input className="form-input" type="text" placeholder="my-org_my-project" value={form.sonarcloud?.projectKeys || ''} onChange={e => handleChange('sonarcloud', 'projectKeys', e.target.value)} />
+                      </div>
+                  </div>
+              </motion.div>
+
               {/* View Permissions */}
               <RoleGuard allowedRoles={['admin']}>
                 <motion.div variants={itemVariants} className="glass-panel p-6">
@@ -250,7 +276,8 @@ const Settings = () => {
                                 {[
                                   { id: 'commit_frequency', label: 'Commit Frequency Chart' },
                                   { id: 'build_success', label: 'Build Success Rate' },
-                                  { id: 'issue_resolution', label: 'Issue Resolution Chart' }
+                                  { id: 'issue_resolution', label: 'Issue Resolution Chart' },
+                                  { id: 'code_quality', label: 'Code Quality (SonarCloud)' }
                                 ].map(view => (
                                     <label key={`manager-${view.id}`} className="flex items-center gap-3 text-gray-300">
                                         <input 
@@ -271,7 +298,8 @@ const Settings = () => {
                                 {[
                                   { id: 'commit_frequency', label: 'Commit Frequency Chart' },
                                   { id: 'build_success', label: 'Build Success Rate' },
-                                  { id: 'issue_resolution', label: 'Issue Resolution Chart' }
+                                  { id: 'issue_resolution', label: 'Issue Resolution Chart' },
+                                  { id: 'code_quality', label: 'Code Quality (SonarCloud)' }
                                 ].map(view => (
                                     <label key={`developer-${view.id}`} className="flex items-center gap-3 text-gray-300">
                                         <input 

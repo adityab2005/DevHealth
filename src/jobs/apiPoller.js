@@ -3,6 +3,7 @@ const IntegrationConfig = require('../models/IntegrationConfig');
 const { fetchGithubCommits } = require('../services/githubService');
 const { fetchJiraIssues } = require('../services/jiraService');
 const { fetchJenkinsBuilds } = require('../services/jenkinsService');
+const { fetchSonarCloudMetrics } = require('../services/sonarcloudService');
 
 let isPolling = false;
 
@@ -36,6 +37,10 @@ const pollApis = async () => {
 
         if (config.jenkins && config.jenkins.token) {
             projectTasks.push(fetchJenkinsBuilds(config.jenkins, teamId));
+        }
+
+        if (config.sonarcloud && config.sonarcloud.token) {
+            projectTasks.push(fetchSonarCloudMetrics(config.sonarcloud, teamId));
         }
 
         if (projectTasks.length > 0) {

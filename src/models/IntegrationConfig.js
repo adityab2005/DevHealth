@@ -22,14 +22,19 @@ const integrationConfigSchema = new mongoose.Schema({
     token: { type: String, default: '' },
     jobs: { type: String, default: '' } // comma-separated
   },
+  sonarcloud: {
+    token: { type: String, default: '' },
+    organization: { type: String, default: '' },
+    projectKeys: { type: String, default: '' } // comma-separated list of component keys
+  },
   permissions: {
-    manager: { 
-      type: [String], 
-      default: ['commit_frequency', 'build_success', 'issue_resolution'] 
+    manager: {
+      type: [String],
+      default: ['commit_frequency', 'build_success', 'issue_resolution', 'code_quality']
     },
-    developer: { 
-      type: [String], 
-      default: ['commit_frequency', 'issue_resolution'] 
+    developer: {
+      type: [String],
+      default: ['commit_frequency', 'issue_resolution', 'code_quality']
     }
   },
   last_synced: { type: Date, default: null }
