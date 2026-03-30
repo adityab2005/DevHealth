@@ -3,7 +3,7 @@ import apiClient from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
 import RoleGuard from '../components/RoleGuard';
 import { motion } from 'framer-motion';
-import { Save, GitBranch, CheckSquare, Layers } from 'lucide-react';
+import { Save, GitBranch, CheckSquare, Layers, Shield } from 'lucide-react';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -15,7 +15,11 @@ const Settings = () => {
   const [form, setForm] = useState({
     github: { token: '', repositories: '' },
     jira: { domain: '', email: '', token: '', projects: '' },
-    jenkins: { baseUrl: '', username: '', token: '', jobs: '' }
+    jenkins: { baseUrl: '', username: '', token: '', jobs: '' },
+    permissions: {
+      manager: ['commit_frequency', 'build_success', 'issue_resolution'],
+      developer: ['commit_frequency', 'issue_resolution']
+    }
   });
 
   useEffect(() => {
@@ -35,7 +39,11 @@ const Settings = () => {
         setForm({
           github: config.github || { token: '', repositories: '' },
           jira: config.jira || { domain: '', email: '', token: '', projects: '' },
-          jenkins: config.jenkins || { baseUrl: '', username: '', token: '', jobs: '' }
+          jenkins: config.jenkins || { baseUrl: '', username: '', token: '', jobs: '' },
+          permissions: config.permissions || {
+            manager: ['commit_frequency', 'build_success', 'issue_resolution'],
+            developer: ['commit_frequency', 'issue_resolution']
+          }
         });
       }
     } catch (error) {
@@ -44,7 +52,11 @@ const Settings = () => {
       setForm({
         github: { token: '', repositories: '' },
         jira: { domain: '', email: '', token: '', projects: '' },
-        jenkins: { baseUrl: '', username: '', token: '', jobs: '' }
+        jenkins: { baseUrl: '', username: '', token: '', jobs: '' },
+        permissions: {
+          manager: ['commit_frequency', 'build_success', 'issue_resolution'],
+          developer: ['commit_frequency', 'issue_resolution']
+        }
       });
     } finally {
       setLoading(false);
@@ -76,6 +88,23 @@ const Settings = () => {
             [field]: value
         }
     }));
+  };
+
+  const handlePermissionChange = (role, view_id, checked) => {
+    setForm(prev => {
+      const currentViews = prev.permissions?.[role] || [];
+      const newViews = checked
+        ? [...currentViews, view_id]
+        : currentViews.filter(v => v !== view_id);
+      
+      return {
+        ...prev,
+        permissions: {
+          ...prev.permissions,
+          [role]: newViews
+        }
+      };
+    });
   };
 
   if (!user || user.role === 'developer') {
@@ -205,6 +234,60 @@ const Settings = () => {
                       </div>
                   </div>
               </motion.div>
+
+              {/* View Permissions */}
+              <RoleGuard allowedRoles={['admin']}>
+                <motion.div variants={itemVariants} className="glass-panel p-6">
+                    <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                      <Shield className="text-white" size={24} />
+                      <h3 className="text-xl font-semibold text-white m-0">Dashboard View Permissions</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h4 className="text-lg font-medium text-white mb-3">Manager Role View</h4>
+                            <div className="space-y-3">
+                                {[
+                                  { id: 'commit_frequency', label: 'Commit Frequency Chart' },
+                                  { id: 'build_success', label: 'Build Success Rate' },
+                                  { id: 'issue_resolution', label: 'Issue Resolution Chart' }
+                                ].map(view => (
+                                    <label key={`manager-${view.id}`} className="flex items-center gap-3 text-gray-300">
+                                        <input 
+                                          type="checkbox" 
+                                          className="form-checkbox h-5 w-5 text-primary rounded border-white/20 bg-dark-bg focus:ring-primary focus:ring-offset-dark-bg"
+                                          checked={form.permissions?.manager?.includes(view.id) || false}
+                                          onChange={(e) => handlePermissionChange('manager', view.id, e.target.checked)}
+                                        />
+                                        {view.label}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="text-lg font-medium text-white mb-3">Developer Role View</h4>
+                            <div className="space-y-3">
+                                {[
+                                  { id: 'commit_frequency', label: 'Commit Frequency Chart' },
+                                  { id: 'build_success', label: 'Build Success Rate' },
+                                  { id: 'issue_resolution', label: 'Issue Resolution Chart' }
+                                ].map(view => (
+                                    <label key={`developer-${view.id}`} className="flex items-center gap-3 text-gray-300">
+                                        <input 
+                                          type="checkbox" 
+                                          className="form-checkbox h-5 w-5 text-primary rounded border-white/20 bg-dark-bg focus:ring-primary focus:ring-offset-dark-bg"
+                                          checked={form.permissions?.developer?.includes(view.id) || false}
+                                          onChange={(e) => handlePermissionChange('developer', view.id, e.target.checked)}
+                                        />
+                                        {view.label}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+              </RoleGuard>
 
               <RoleGuard allowedRoles={['admin']}>
                   <motion.div variants={itemVariants} className="flex justify-end pt-4 pb-12">

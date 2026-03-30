@@ -43,11 +43,14 @@ router.post('/', authorize('admin', 'manager'), async (req, res) => {
     if (!team_id) {
        return res.status(400).json({ error: 'User does not belong to a team. Create one first via Admin.' });
     }
-    const { github, jira, jenkins } = req.body;
+    const { github, jira, jenkins, permissions } = req.body;
+
+    const updateData = { github, jira, jenkins };
+    if (permissions) updateData.permissions = permissions;
 
     const config = await IntegrationConfig.findOneAndUpdate(
       { team_id },
-      { $set: { github, jira, jenkins } },
+      { $set: updateData },
       { new: true, upsert: true }
     );
 

@@ -22,6 +22,16 @@ const integrationConfigSchema = new mongoose.Schema({
     token: { type: String, default: '' },
     jobs: { type: String, default: '' } // comma-separated
   },
+  permissions: {
+    manager: { 
+      type: [String], 
+      default: ['commit_frequency', 'build_success', 'issue_resolution'] 
+    },
+    developer: { 
+      type: [String], 
+      default: ['commit_frequency', 'issue_resolution'] 
+    }
+  },
   last_synced: { type: Date, default: null }
 }, { timestamps: true });
 

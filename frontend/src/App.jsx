@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LayoutDashboard, Settings as SettingsIcon, LogOut, Menu, X, ShieldAlert, Cpu } from 'lucide-react';
+import { LayoutDashboard, Settings as SettingsIcon, LogOut, Menu, X, ShieldAlert, Cpu, Users, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import TeamManagement from './pages/TeamManagement';
+import AcceptInvite from './pages/AcceptInvite';
+import MyInvites from './pages/MyInvites';
 import './index.css';
 
 const RoleBadge = ({ role }) => {
   const getColors = () => {
     switch (role?.toLowerCase()) {
-      case 'admin': return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
-      case 'manager': return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+      case 'admin': return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';      
+      case 'manager': return 'bg-amber-500/20 text-amber-300 border-amber-500/30';       
       default: return 'bg-green-500/20 text-green-300 border-green-500/30';
     }
   };
@@ -33,6 +36,14 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'Settings', path: '/settings', icon: <SettingsIcon size={20} /> },
   ];
+
+  if (user) {
+    navItems.push({ name: 'Invites', path: '/invites', icon: <Mail size={20} /> });
+  }
+
+  if (user?.role === 'admin' || user?.role === 'manager') {
+    navItems.push({ name: 'Team', path: '/team', icon: <Users size={20} /> });
+  }
 
   return (
     <>
@@ -161,9 +172,12 @@ const AppContent = () => {
     <Routes>
         <Route path='/login' element={<PublicRoute><Login /></PublicRoute>} />
         <Route path='/register' element={<PublicRoute><Register /></PublicRoute>} />
-        
+        <Route path='/invite/:token' element={<AcceptInvite />} />
+
         <Route path='/' element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
         <Route path='/settings' element={<PrivateRoute><Layout><Settings /></Layout></PrivateRoute>} />
+        <Route path='/team' element={<PrivateRoute><Layout><TeamManagement /></Layout></PrivateRoute>} />
+        <Route path='/invites' element={<PrivateRoute><Layout><MyInvites /></Layout></PrivateRoute>} />
         <Route path='*' element={<Navigate to="/" />} />
     </Routes>
   );

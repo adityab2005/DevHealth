@@ -18,6 +18,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
+  const [permissions, setPermissions] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -35,8 +36,16 @@ const Dashboard = () => {
 
       if (configRes && configRes.data) {
         setLastSynced(configRes.data.last_synced || null);
+        setPermissions(configRes.data.permissions || {
+          manager: ['commit_frequency', 'build_success', 'issue_resolution'],
+          developer: ['commit_frequency', 'issue_resolution']
+        });
       } else {
         setLastSynced(null);
+        setPermissions({
+          manager: ['commit_frequency', 'build_success', 'issue_resolution'],
+          developer: ['commit_frequency', 'issue_resolution']
+        });
       }
     } catch (error) {
       console.error("Failed to load dashboard data", error);
@@ -62,6 +71,13 @@ const Dashboard = () => {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const hasPermission = (view_id) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (!permissions) return false;
+    return permissions[user.role]?.includes(view_id) || false;
   };
 
   return (
@@ -97,8 +113,8 @@ const Dashboard = () => {
       ) : (
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <RoleGuard allowedRoles={['admin', 'manager', 'developer']}>
-              <motion.div 
+            {hasPermission('commit_frequency') && (
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
@@ -112,10 +128,10 @@ const Dashboard = () => {
                   <CommitFrequencyChart data={commitsData} />
                 </div>
               </motion.div>
-            </RoleGuard>
+            )}
 
-            <RoleGuard allowedRoles={['admin', 'manager']}>
-              <motion.div 
+            {hasPermission('build_success') && (
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.2 }}
@@ -129,11 +145,11 @@ const Dashboard = () => {
                     <BuildSuccessRateChart data={buildsData} />
                 </div>
               </motion.div>
-            </RoleGuard>
+            )}
           </div>
 
-          <RoleGuard allowedRoles={['admin', 'manager', 'developer']}>
-            <motion.div 
+          {hasPermission('issue_resolution') && (
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.3 }}
@@ -147,7 +163,7 @@ const Dashboard = () => {
                 <IssuesChart data={issuesData} />
               </div>
             </motion.div>
-          </RoleGuard>
+          )}
         </div>
       )}
     </div>
