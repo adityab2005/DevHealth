@@ -5,6 +5,7 @@ import CommitFrequencyChart from '../components/charts/CommitFrequencyChart';
 import BuildSuccessRateChart from '../components/charts/BuildSuccessRateChart';
 import IssuesChart from '../components/charts/IssuesChart';
 import CodeQualityChart from '../components/charts/CodeQualityChart';
+import CodeQualityWidget from '../components/charts/CodeQualityWidget';
 import RoleGuard from '../components/RoleGuard';
 import { useAuth } from '../context/AuthContext';
 import { RefreshCw, Clock } from 'lucide-react';
@@ -180,8 +181,8 @@ const Dashboard = () => {
                   <span className="w-2 h-2 rounded-full bg-green-500"></span>
                   Code Quality (SonarQube)
               </h3>
-              <div className="h-[350px] w-full">
-                <CodeQualityChart data={codeQualityData} />
+              <div className="w-full">
+                <CodeQualityWidget data={codeQualityData} />
               </div>
             </motion.div>
           )}
